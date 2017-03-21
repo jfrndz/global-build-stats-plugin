@@ -194,8 +194,8 @@ public class GlobalBuildStatsPlugin extends Plugin {
 		}
 
     	@Override
-    	public void onCompleted(Run r, TaskListener listener) {
-    		super.onCompleted(r, listener);
+    	public void onFinalized(Run r) {
+    		super.onFinalized(r);
 
     		getPluginBusiness().onJobCompleted(r);
     	}
