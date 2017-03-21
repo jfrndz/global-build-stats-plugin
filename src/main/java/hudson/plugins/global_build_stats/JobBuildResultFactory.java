@@ -11,23 +11,29 @@ public class JobBuildResultFactory {
 	public static final JobBuildResultFactory INSTANCE = new JobBuildResultFactory();
     /** @see hudson.security.ACL#SYSTEM */
 	private static final String SYSTEM_USERNAME = "SYSTEM";
-	
+
 	private JobBuildResultFactory(){
 	}
-	
-	public JobBuildResult createJobBuildResult(AbstractBuild build){
-		String buildName = build.getProject().getFullName();
+
+	public JobBuildResult createJobBuildResult(Run build){
+		String buildName = build.getParent().getFullName();
 		long duration = build.getDuration();
-		String nodeName = build.getBuiltOnStr();
+
+		String nodeName;
+		try {
+			nodeName = ((AbstractBuild) build).getBuiltOnStr();
+		} catch (ClassCastException e) {
+			nodeName = "";
+		}
 		/* Can't do that since MavenModuleSet is in maven-plugin artefact which is in test scope
 		if(build.getProject() instanceof MavenModuleSet){
 			buildName = ((MavenModuleSet)build.getProject()).getRootModule().toString();
 		}*/
-    	return new JobBuildResult(createBuildResult(build.getResult()), buildName, 
+    	return new JobBuildResult(createBuildResult(build.getResult()), buildName,
     			build.getNumber(), build.getTimestamp(), duration, nodeName, extractUserNameIn(build));
 	}
 
-    public JobBuildSearchResult createJobBuildSearchResult(AbstractBuild build){
+    public JobBuildSearchResult createJobBuildSearchResult(Run build){
         return createJobBuildSearchResult(createJobBuildResult(build));
     }
 
@@ -48,8 +54,8 @@ public class JobBuildResultFactory {
 
         return new JobBuildSearchResult(r, isJobAccessible, isBuildAccessible);
     }
-	
-	public static String extractUserNameIn(AbstractBuild<?,?> build){
+
+	public static String extractUserNameIn(Run<?,?> build){
 		String userName;
         @SuppressWarnings("deprecation") Cause.UserCause uc = build.getCause(Cause.UserCause.class);
 		Cause.UserIdCause uic = build.getCause(Cause.UserIdCause.class);
@@ -57,14 +63,14 @@ public class JobBuildResultFactory {
 			userName = uc.getUserName();
 		} else if(uic != null){
 			userName = uic.getUserId();
-		} 
+		}
 		// If no UserCause has been found, SYSTEM user should have launched the build
 		else {
 			userName = SYSTEM_USERNAME;
 		}
 		return userName;
 	}
-	
+
 	public BuildResult createBuildResult(Result result){
 		if(Result.ABORTED.equals(result)){
 			return BuildResult.ABORTED;

@@ -1,7 +1,7 @@
 package hudson.plugins.global_build_stats.business;
 
 import hudson.model.TopLevelItem;
-import hudson.model.AbstractBuild;
+import hudson.model.Run;
 import hudson.model.AbstractProject;
 import hudson.model.Hudson;
 import hudson.model.Item;
@@ -52,7 +52,7 @@ public class GlobalBuildStatsBusiness {
     /**
      * Records the result of a build.
      */
-	public void onJobCompleted(final AbstractBuild build) {
+	public void onJobCompleted(final Run build) {
         for(RetentionStrategy s : plugin.getRetentionStrategies()){
             s.onBuildCompleted(build, pluginSaver);
         }
@@ -63,7 +63,7 @@ public class GlobalBuildStatsBusiness {
             }
         });
 	}
-	
+
 	public BuildStatConfiguration searchBuildStatConfigById(String buildStatId){
 		int index = searchBuildStatConfigIndexById(buildStatId);
 		if(index != -1){
@@ -72,7 +72,7 @@ public class GlobalBuildStatsBusiness {
 			return null;
 		}
 	}
-	
+
 	private int searchBuildStatConfigIndexById(String id){
 		int idx = 0;
 		for(BuildStatConfiguration c : plugin.getBuildStatConfigs()){
@@ -81,14 +81,14 @@ public class GlobalBuildStatsBusiness {
 			}
 			idx++;
 		}
-		
+
 		if(idx == this.plugin.getBuildStatConfigs().size()){
 			idx = -1;
 		}
-		
+
 		return idx;
 	}
-	
+
 	public void recordBuildInfos() throws IOException {
 
         this.pluginSaver.updatePlugin(new GlobalBuildStatsPluginSaver.BeforeSavePluginCallback(){
@@ -96,16 +96,8 @@ public class GlobalBuildStatsBusiness {
             public void changePluginStateBeforeSavingIt(GlobalBuildStatsPlugin plugin) {
 
                 List<JobBuildResult> jobBuildResultsRead = new ArrayList<JobBuildResult>();
-                for (TopLevelItem item : Hudson.getInstance().getItems()) {
-                	if (item instanceof Folder){
-                		Folder f = (Folder)item;
-                		for (TopLevelItem i : f.getItems()){
-                			handleItem(jobBuildResultsRead,i);
-                		}
-                	}
-                    if (item instanceof AbstractProject) {
-                    	handleItem(jobBuildResultsRead, item);
-                    }
+                for (Job item : Hudson.getInstance().getAllItems(Job.class)) {
+              	   handleItem(jobBuildResultsRead, item);
                 }
 
                 plugin.getJobBuildResultsSharder().queueResultsToAdd(
@@ -113,27 +105,25 @@ public class GlobalBuildStatsBusiness {
             }
         });
 	}
-	
-	public void handleItem(List<JobBuildResult> results, TopLevelItem item){
-		if (item instanceof AbstractProject){
-			addBuildsFrom(results, (AbstractProject)item);
-		}
+
+	public void handleItem(List<JobBuildResult> results, Job item){
+		addBuildsFrom(results, item);
 	}
-	
+
 	public JFreeChart createChart(BuildStatConfiguration config){
 		List<AbstractBuildStatChartDimension> dimensions = createDataSetBuilder(config);
         return createChart(dimensions, config.getBuildStatTitle());
 	}
-	
+
 	public List<JobBuildSearchResult> searchBuilds(BuildHistorySearchCriteria searchCriteria){
     	List<JobBuildSearchResult> filteredJobBuildResults = new ArrayList<JobBuildSearchResult>();
-    	
+
         for(JobBuildResult r : this.plugin.getJobBuildResults()){
         	if(searchCriteria.isJobResultEligible(r)){
                 filteredJobBuildResults.add(JobBuildResultFactory.INSTANCE.createJobBuildSearchResult(r));
         	}
         }
-        
+
         // Sorting on job results dates
         Collections.sort(filteredJobBuildResults, new JobBuildResult.AntiChronologicalComparator());
 
@@ -176,7 +166,7 @@ public class GlobalBuildStatsBusiness {
             }
         });
 	}
-	
+
 	public void deleteBuildStatConfiguration(final String buildStatId) throws IOException {
         this.pluginSaver.updatePlugin(new GlobalBuildStatsPluginSaver.BeforeSavePluginCallback(){
 
@@ -188,7 +178,7 @@ public class GlobalBuildStatsBusiness {
             }
         });
 	}
-	
+
 	public void moveUpConf(final String buildStatId) throws IOException {
         this.pluginSaver.updatePlugin(new GlobalBuildStatsPluginSaver.BeforeSavePluginCallback(){
 
@@ -207,7 +197,7 @@ public class GlobalBuildStatsBusiness {
             }
         });
 	}
-	
+
 	public void moveDownConf(final String buildStatId) throws IOException {
         this.pluginSaver.updatePlugin(new GlobalBuildStatsPluginSaver.BeforeSavePluginCallback(){
 
@@ -226,7 +216,7 @@ public class GlobalBuildStatsBusiness {
             }
         });
 	}
-	
+
 	public static String escapeAntiSlashes(String value){
 		if(value != null){
 			return value.replaceAll("\\\\", "\\\\\\\\");
@@ -234,18 +224,18 @@ public class GlobalBuildStatsBusiness {
 			return null;
 		}
 	}
-    
+
     private JFreeChart createChart(List<AbstractBuildStatChartDimension> dimensions, String title) {
 
-    	final JFreeChart chart = ChartFactory.createStackedAreaChart(title, null, "", 
+    	final JFreeChart chart = ChartFactory.createStackedAreaChart(title, null, "",
     			new DataSetBuilder<String, DateRange>().build(), PlotOrientation.VERTICAL, true, true, false);
         chart.setBackgroundPaint(Color.white);
-        
+
         final LegendTitle legend = chart.getLegend();
         legend.setPosition(RectangleEdge.RIGHT);
 
         final CategoryPlot plot = chart.getCategoryPlot();
-        
+
         plot.setBackgroundPaint(Color.lightGray);
         plot.setForegroundAlpha(0.85F);
         plot.setRangeGridlinesVisible(true);
@@ -268,13 +258,13 @@ public class GlobalBuildStatsBusiness {
         	plot.setDataset(i, dimension.getDatasetBuilder().build());
         	plot.mapDatasetToRangeAxis(i,i);
         }
-        
+
         //plot.setFixedLegendItems(sortLegendItems(plot.getLegendItems()));
         plot.setInsets(new RectangleInsets(5.0, 0, 0, 5.0));
 
         return chart;
     }
-    
+
     // Useless... for the moment...
     private static LegendItemCollection sortLegendItems(LegendItemCollection legendItems){
     	LegendItemCollection sortedLegendItems = new LegendItemCollection();
@@ -287,16 +277,16 @@ public class GlobalBuildStatsBusiness {
     		while(legendItemMatchingCurrentLabel == null && legendItemsIter.hasNext()){
     			LegendItem currentLegendItem = legendItemsIter.next();
     			if(legendItemData.label.equals(currentLegendItem.getLabel())){
-    				legendItemMatchingCurrentLabel = new LegendItem(legendItemData.label, currentLegendItem.getDescription(), 
-    						currentLegendItem.getToolTipText(), "", new Rectangle2D.Double(-4.0, -4.0, 8.0, 8.0), legendItemData.color); 
+    				legendItemMatchingCurrentLabel = new LegendItem(legendItemData.label, currentLegendItem.getDescription(),
+    						currentLegendItem.getToolTipText(), "", new Rectangle2D.Double(-4.0, -4.0, 8.0, 8.0), legendItemData.color);
     			}
     		}
-    		
+
     		if(legendItemMatchingCurrentLabel != null){
     			sortedLegendItems.add(legendItemMatchingCurrentLabel);
     		}
     	}
-    	
+
     	return sortedLegendItems;
     }
 
@@ -317,13 +307,13 @@ public class GlobalBuildStatsBusiness {
     	for(YAxisChartDimension dimensionShown : config.getDimensionsShown()){
     		dimensions.add(dimensionShown.createBuildStatChartDimension(config, new DataSetBuilder<String, DateRange>()));
     	}
-    	
+
     	List<JobBuildResult> sortedJobResults = new ArrayList<JobBuildResult>(this.plugin.getJobBuildResults());
         Collections.sort(sortedJobResults, new JobBuildResult.AntiChronologicalComparator());
 
 		Calendar d2 = new GregorianCalendar();
 		Calendar d1 = config.getHistoricScale().getPreviousStep(d2);
-		
+
 		int tickCount = 0;
 		Iterator<JobBuildResult> buildsIter = sortedJobResults.iterator();
         JobBuildResult currentBuild = null;
@@ -339,12 +329,12 @@ public class GlobalBuildStatsBusiness {
 	    		for(AbstractBuildStatChartDimension dimension : dimensions){
 	    			dimension.provideDataInDataSet(range);
 	    		}
-	    		
+
 				d2 = (Calendar)d1.clone();
 				d1 = config.getHistoricScale().getPreviousStep(d2);
 				tickCount++;
 	    	}
-	    	
+
 	    	// If no range found : stop the iteration !
 	    	if(tickCount != config.getHistoricLength() && currentBuild != null){
 	    		if(config.getBuildFilters().isJobResultEligible(currentBuild)){
@@ -352,7 +342,7 @@ public class GlobalBuildStatsBusiness {
 		    			dimension.saveDataForBuild(currentBuild);
 		    		}
 	    		}
-	    		
+
 	    		if(buildsIter.hasNext()){
 	    			currentBuild = buildsIter.next();
 	    			buildDate = currentBuild.getBuildDate();
@@ -362,32 +352,32 @@ public class GlobalBuildStatsBusiness {
 	    		}
 	    	}
 		}
-		
+
 	    return dimensions;
 	}
-	
-	private static void addBuild(List<JobBuildResult> jobBuildResultsRead, AbstractBuild build){
+
+	private static void addBuild(List<JobBuildResult> jobBuildResultsRead, Run build){
 		jobBuildResultsRead.add(JobBuildResultFactory.INSTANCE.createJobBuildResult(build));
 	}
-	
-	private static void addBuildsFrom(List<JobBuildResult> jobBuildResultsRead, AbstractProject project){
-        List<AbstractBuild> builds = project.getBuilds();
-        Iterator<AbstractBuild> buildIterator = builds.iterator();
+
+	private static void addBuildsFrom(List<JobBuildResult> jobBuildResultsRead, Job project){
+        List<Run> builds = project.getBuilds();
+        Iterator<Run> buildIterator = builds.iterator();
 
         while (buildIterator.hasNext()) {
         	addBuild(jobBuildResultsRead, buildIterator.next());
         }
 	}
-	
+
 	protected static List<JobBuildResult> mergeJobBuildResults(List<JobBuildResult> existingJobResults, List<JobBuildResult> jobResultsToMerge){
 		List<JobBuildResult> mergedJobResultsList = new ArrayList<JobBuildResult>(existingJobResults);
-		
+
 		for(JobBuildResult jbrToMerge : jobResultsToMerge){
 			if(!mergedJobResultsList.contains(jbrToMerge)){
 				mergedJobResultsList.add(jbrToMerge);
 			}
 		}
-		
+
 		return mergedJobResultsList;
 	}
 
@@ -404,7 +394,7 @@ public class GlobalBuildStatsBusiness {
         }
     }
 
-    public void onBuildDeleted(AbstractBuild build) {
+    public void onBuildDeleted(Run build) {
         for(RetentionStrategy s : plugin.getRetentionStrategies()){
             s.onBuildDeleted(build, pluginSaver);
         }
