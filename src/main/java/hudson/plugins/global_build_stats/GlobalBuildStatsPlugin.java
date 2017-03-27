@@ -21,8 +21,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletException;
+
+import jenkins.util.Timer;
 
 import net.sf.json.JSONObject;
 
@@ -194,10 +197,14 @@ public class GlobalBuildStatsPlugin extends Plugin {
 		}
 
     	@Override
-    	public void onFinalized(Run r) {
-    		super.onFinalized(r);
-
-    		getPluginBusiness().onJobCompleted(r);
+    	public void onCompleted(Run r, TaskListener listener) {
+    		super.onCompleted(r);
+        
+        Timer.get().schedule(new Runnable() {
+          @Override public void run() {
+    		    getPluginBusiness().onJobCompleted(r);
+          }
+        }, 60, TimeUnit.SECONDS)
     	}
 
         @Override
