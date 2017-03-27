@@ -60,6 +60,7 @@ public class GlobalBuildStatsBusinessTest extends HudsonTestCase {
             }
         }).get();
 
+        Thread.sleep(15000);
         assertEquals(25,plugin.getJobBuildResults().size());
     }
 }

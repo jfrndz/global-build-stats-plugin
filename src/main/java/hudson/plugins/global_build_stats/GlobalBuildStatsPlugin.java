@@ -197,14 +197,14 @@ public class GlobalBuildStatsPlugin extends Plugin {
 		}
 
     	@Override
-    	public void onCompleted(Run r, TaskListener listener) {
-    		super.onCompleted(r);
-        
+    	public void onCompleted(final Run r, TaskListener listener) {
+    		super.onCompleted(r, listener);
+
         Timer.get().schedule(new Runnable() {
           @Override public void run() {
     		    getPluginBusiness().onJobCompleted(r);
           }
-        }, 60, TimeUnit.SECONDS)
+        }, 15, TimeUnit.SECONDS);
     	}
 
         @Override
